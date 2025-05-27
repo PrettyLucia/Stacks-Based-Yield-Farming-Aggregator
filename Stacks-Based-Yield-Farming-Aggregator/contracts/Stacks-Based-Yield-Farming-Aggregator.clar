@@ -159,4 +159,50 @@
   success: bool
 })
 
+;; User activity counter
+(define-map user-activity-count principal uint)
+
+;; === Protocol Management Functions ===
+
+;; Pause/unpause protocol
+(define-public (set-protocol-paused (paused bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set protocol-paused paused))))
+
+;; Set fee parameters
+(define-public (set-performance-fee (fee-bps uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= fee-bps u2000) ERR_INVALID_AMOUNT) ;; Max 20% fee
+    (ok (var-set performance-fee-bps fee-bps))))
+
+(define-public (set-withdrawal-fee (fee-bps uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= fee-bps u500) ERR_INVALID_AMOUNT) ;; Max 5% fee
+    (ok (var-set withdrawal-fee-bps fee-bps))))
+
+;; Set fee allocations
+(define-public (set-fee-allocations (treasury uint) (staking uint) (insurance uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (is-eq (+ (+ treasury staking) insurance) u10000) ERR_INVALID_AMOUNT)
+    (var-set treasury-allocation treasury)
+    (var-set staking-allocation staking)
+    (var-set insurance-allocation insurance)
+    (ok true)))
+
+;; Set treasury and insurance fund addresses
+(define-public (set-treasury-address (address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set treasury-address address))))
+
+(define-public (set-insurance-fund-address (address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set insurance-fund-address address))))
+
+
 
