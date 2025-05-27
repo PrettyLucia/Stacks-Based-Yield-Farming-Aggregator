@@ -313,3 +313,25 @@
 (define-constant ERR_DUPLICATE_ENTRY (err u1022))
 (define-constant ERR_REWARD_EXPIRED (err u1023))
 (define-constant ERR_VAULT_LOCKED (err u1024))
+
+(define-map vip-whitelist principal {
+  tier: uint, ;; 1=bronze, 2=silver, 3=gold, 4=platinum
+  added-by: principal,
+  added-at-block: uint,
+  fee-reduction: uint, ;; Basis points reduction
+  priority-access: bool,
+  custom-limits: bool
+})
+
+(define-data-var whitelist-enabled bool false)
+
+;; ==== Time-Locked Vault System ====
+(define-map time-locked-vaults {user: principal, vault-id: uint} {
+  token: principal,
+  amount: uint,
+  lock-duration: uint, ;; Blocks to lock
+  unlock-block: uint,
+  bonus-multiplier: uint, ;; Bonus APY multiplier in basis points
+  claimed: bool,
+  auto-renew: bool
+})
