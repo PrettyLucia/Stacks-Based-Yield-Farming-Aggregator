@@ -389,3 +389,26 @@
 })
 
 (define-data-var next-certificate-id uint u1)
+
+(define-map social-profiles principal {
+  display-name: (string-ascii 32),
+  total-followers: uint,
+  total-following: uint,
+  public-strategies: uint,
+  reputation-score: uint,
+  verified: bool
+})
+
+(define-map social-follows {follower: principal, following: principal} bool)
+(define-map strategy-copies {copier: principal, original-strategy: uint} uint) ;; copied strategy id
+
+;; ==== NEW FEATURE: Risk Assessment Oracle ====
+(define-map risk-assessments principal {
+  overall-risk: uint, ;; 1-100
+  smart-contract-risk: uint,
+  liquidity-risk: uint,
+  market-risk: uint,
+  last-assessment: uint,
+  assessor: principal,
+  confidence-score: uint
+})
