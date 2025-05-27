@@ -567,3 +567,39 @@
       reputation-score: u100,
       verified: false
     }))))
+
+
+(define-public (follow-trader (trader principal))
+  (let ((follower-profile (default-to 
+          {display-name: "", total-followers: u0, total-following: u0, 
+           public-strategies: u0, reputation-score: u100, verified: false}
+          (map-get? social-profiles tx-sender)))
+        (trader-profile (unwrap! (map-get? social-profiles trader) ERR_INVALID_AMOUNT)))
+    
+    (asserts! (not (is-eq tx-sender trader)) ERR_INVALID_AMOUNT)
+    (map-set social-follows {follower: tx-sender, following: trader} true)
+    (map-set social-profiles tx-sender 
+      (merge follower-profile {total-following: (+ (get total-following follower-profile) u1)}))
+    (ok (map-set social-profiles trader 
+      (merge trader-profile {total-followers: (+ (get total-followers trader-profile) u1)})))))
+(define-public (submit-risk-assessment 
+                (protocol principal)
+                (overall-risk uint)
+                (smart-contract-risk uint)
+                (liquidity-risk uint)
+                (market-risk uint)
+                (confidence-score uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (and (<= overall-risk u100) (<= smart-contract-risk u100)) ERR_INVALID_AMOUNT)
+    (asserts! (and (<= liquidity-risk u100) (<= market-risk u100)) ERR_INVALID_AMOUNT)
+    
+    (ok (map-set risk-assessments protocol {
+      overall-risk: overall-risk,
+      smart-contract-risk: smart-contract-risk,
+      liquidity-risk: liquidity-risk,
+      market-risk: market-risk,
+      last-assessment: stacks-block-height,
+      assessor: tx-sender,
+      confidence-score: confidence-score
+    }))))
