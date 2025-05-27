@@ -447,3 +447,159 @@
   total-participants: uint,
   distributed-rewards: uint
 })
+
+
+(define-data-var current-epoch uint u1)
+
+;; === Protocol Management Functions ===
+
+(define-public (add-to-whitelist 
+                (user principal) 
+                (tier uint) 
+                (fee-reduction uint)
+                (priority-access bool)
+                (custom-limits bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= tier u4) ERR_INVALID_AMOUNT)
+    (asserts! (<= fee-reduction u5000) ERR_INVALID_AMOUNT) ;; Max 50% reduction
+    
+    (ok (map-set vip-whitelist user {
+      tier: tier,
+      added-by: tx-sender,
+      added-at-block: stacks-block-height,
+      fee-reduction: fee-reduction,
+      priority-access: priority-access,
+      custom-limits: custom-limits
+    }))))
+
+
+(define-public (remove-from-whitelist (user principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (map-delete vip-whitelist user))))
+
+(define-public (toggle-whitelist-requirement (enabled bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set whitelist-enabled enabled))))
+
+(define-public (claim-vault-rewards (vault-id uint))
+  (let ((vault (unwrap! (map-get? time-locked-vaults {user: tx-sender, vault-id: vault-id}) ERR_INVALID_AMOUNT)))
+    (asserts! (>= stacks-block-height (get unlock-block vault)) ERR_VAULT_LOCKED)
+    (asserts! (not (get claimed vault)) ERR_DUPLICATE_ENTRY)
+    
+    ;; Calculate rewards based on bonus multiplier
+    (let ((rewards (/ (* (get amount vault) (get bonus-multiplier vault)) u10000)))
+      (ok (map-set time-locked-vaults {user: tx-sender, vault-id: vault-id} 
+        (merge vault {claimed: true}))))))
+(define-public (create-strategy-competition 
+                (name (string-ascii 64))
+                (duration-blocks uint)
+                (prize-pool uint)
+                (entry-fee uint)
+                (max-participants uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (let ((competition-id (var-get next-competition-id)))
+      (var-set next-competition-id (+ competition-id u1))
+      (ok (map-set strategy-competitions competition-id {
+        name: name,
+        start-block: stacks-block-height,
+        end-block: (+ stacks-block-height duration-blocks),
+        prize-pool: prize-pool,
+        entry-fee: entry-fee,
+        min-participants: u5,
+        max-participants: max-participants,
+        winner-strategy: u0,
+        active: true,
+        participants: u0
+      })))))
+
+(define-public (join-competition (competition-id uint) (strategy-id uint))
+  (let ((competition (unwrap! (map-get? strategy-competitions competition-id) ERR_INVALID_AMOUNT)))
+    (asserts! (get active competition) ERR_INVALID_AMOUNT)
+    (asserts! (< (get participants competition) (get max-participants competition)) ERR_MAXIMUM_CAPACITY)
+    (asserts! (< stacks-block-height (get end-block competition)) ERR_INVALID_AMOUNT)
+    
+    ;; Entry fee payment would be handled here
+    (map-set competition-participants {competition-id: competition-id, user: tx-sender} strategy-id)
+    (ok (map-set strategy-competitions competition-id 
+      (merge competition {participants: (+ (get participants competition) u1)})))))
+
+(define-public (set-circuit-breaker 
+                (token principal) 
+                (max-withdraw-per-block uint) 
+                (trigger-threshold uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (map-set circuit-breakers token {
+      token: token,
+      max-withdraw-per-block: max-withdraw-per-block,
+      current-block-withdrawals: u0,
+      last-reset-block: stacks-block-height,
+      breaker-active: false,
+      trigger-threshold: trigger-threshold
+    }))))
+
+(define-public (check-withdrawal-limits (token principal) (amount uint))
+  (let ((breaker (default-to 
+          {token: token, max-withdraw-per-block: u1000000000, current-block-withdrawals: u0,
+           last-reset-block: u0, breaker-active: false, trigger-threshold: u2000}
+          (map-get? circuit-breakers token))))
+    
+    ;; Reset counter if new block
+    (let ((updated-breaker (if (> stacks-block-height (get last-reset-block breaker))
+                             (merge breaker {current-block-withdrawals: u0, last-reset-block: stacks-block-height})
+                             breaker))
+          (new-withdrawals (+ (get current-block-withdrawals updated-breaker) amount)))
+      
+      (asserts! (<= new-withdrawals (get max-withdraw-per-block updated-breaker)) ERR_INVALID_AMOUNT)
+      (ok (map-set circuit-breakers token (merge updated-breaker {current-block-withdrawals: new-withdrawals}))))))
+
+(define-public (create-social-profile (display-name (string-ascii 32)))
+  (begin
+    (ok (map-set social-profiles tx-sender {
+      display-name: display-name,
+      total-followers: u0,
+      total-following: u0,
+      public-strategies: u0,
+      reputation-score: u100,
+      verified: false
+    }))))
+
+
+(define-public (follow-trader (trader principal))
+  (let ((follower-profile (default-to 
+          {display-name: "", total-followers: u0, total-following: u0, 
+           public-strategies: u0, reputation-score: u100, verified: false}
+          (map-get? social-profiles tx-sender)))
+        (trader-profile (unwrap! (map-get? social-profiles trader) ERR_INVALID_AMOUNT)))
+    
+    (asserts! (not (is-eq tx-sender trader)) ERR_INVALID_AMOUNT)
+    (map-set social-follows {follower: tx-sender, following: trader} true)
+    (map-set social-profiles tx-sender 
+      (merge follower-profile {total-following: (+ (get total-following follower-profile) u1)}))
+    (ok (map-set social-profiles trader 
+      (merge trader-profile {total-followers: (+ (get total-followers trader-profile) u1)})))))
+(define-public (submit-risk-assessment 
+                (protocol principal)
+                (overall-risk uint)
+                (smart-contract-risk uint)
+                (liquidity-risk uint)
+                (market-risk uint)
+                (confidence-score uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (and (<= overall-risk u100) (<= smart-contract-risk u100)) ERR_INVALID_AMOUNT)
+    (asserts! (and (<= liquidity-risk u100) (<= market-risk u100)) ERR_INVALID_AMOUNT)
+    
+    (ok (map-set risk-assessments protocol {
+      overall-risk: overall-risk,
+      smart-contract-risk: smart-contract-risk,
+      liquidity-risk: liquidity-risk,
+      market-risk: market-risk,
+      last-assessment: stacks-block-height,
+      assessor: tx-sender,
+      confidence-score: confidence-score
+    }))))
