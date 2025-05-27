@@ -205,4 +205,26 @@
     (ok (var-set insurance-fund-address address))))
 
 
+;; Add or update supported protocol
+(define-public (add-supported-protocol 
+                (protocol-address principal) 
+                (name (string-ascii 64))
+                (tvl-cap uint)
+                (risk-score uint)
+                (audited bool)
+                (protocol-type (string-ascii 32)))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= risk-score u100) ERR_INVALID_AMOUNT)
+    
+    (ok (map-set supported-protocols protocol-address {
+      name: name,
+      active: true,
+      tvl-cap: tvl-cap,
+      risk-score: risk-score,
+      audited: audited,
+      last-harvest-block: u0,
+      last-apr: u0,
+      protocol-type: protocol-type
+    }))))
 
