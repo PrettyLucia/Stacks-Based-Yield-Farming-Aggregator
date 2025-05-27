@@ -294,3 +294,22 @@
       {reduced-fees: u300, max-strategies: u15, priority-rebalance: true, custom-strategies: false}
       {reduced-fees: u500, max-strategies: u50, priority-rebalance: true, custom-strategies: true})))
 
+
+(define-map multisig-transactions uint {
+  initiator: principal,
+  target-contract: principal,
+  function-name: (string-ascii 32),
+  parameters: (buff 512),
+  confirmations: (list 10 principal),
+  required-confirmations: uint,
+  executed: bool,
+  expiry-block: uint
+})
+
+;; ==== NEW FEATURE: Additional Error Constants ====
+(define-constant ERR_WHITELIST_REQUIRED (err u1019))
+(define-constant ERR_COOLDOWN_ACTIVE (err u1020))
+(define-constant ERR_INVALID_SIGNATURE (err u1021))
+(define-constant ERR_DUPLICATE_ENTRY (err u1022))
+(define-constant ERR_REWARD_EXPIRED (err u1023))
+(define-constant ERR_VAULT_LOCKED (err u1024))
