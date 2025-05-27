@@ -435,3 +435,15 @@
   total-milestones: uint,
   last-milestone-block: uint
 })
+
+;; ==== NEW FEATURE: Liquidity Mining Epochs ====
+(define-map mining-epochs uint {
+  start-block: uint,
+  end-block: uint,
+  total-rewards: uint,
+  reward-token: principal,
+  participating-strategies: (list 10 uint),
+  rewards-per-block: uint,
+  total-participants: uint,
+  distributed-rewards: uint
+})
