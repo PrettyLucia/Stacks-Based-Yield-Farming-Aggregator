@@ -412,3 +412,26 @@
   assessor: principal,
   confidence-score: uint
 })
+
+;; ==== NEW FEATURE: Automated Portfolio Rebalancing ====
+(define-map auto-rebalance-configs principal {
+  enabled: bool,
+  target-allocations: (list 5 {strategy-id: uint, percentage: uint}),
+  rebalance-threshold: uint, ;; Percentage deviation to trigger
+  max-rebalance-frequency: uint, ;; Minimum blocks between rebalances
+  last-rebalance-block: uint,
+  rebalance-cost: uint
+})
+
+;; ==== NEW FEATURE: Milestone Achievement System ====
+(define-map user-milestones principal {
+  first-deposit: bool,
+  deposit-10k: bool,
+  deposit-100k: bool,
+  deposit-1m: bool,
+  hold-30-days: bool,
+  hold-1-year: bool,
+  refer-5-users: bool,
+  total-milestones: uint,
+  last-milestone-block: uint
+})
