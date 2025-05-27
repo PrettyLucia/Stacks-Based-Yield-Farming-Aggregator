@@ -228,3 +228,222 @@
       protocol-type: protocol-type
     }))))
 
+;; Update protocol status
+(define-public (update-protocol-status (protocol-address principal) (active bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (let ((protocol (unwrap! (map-get? supported-protocols protocol-address) ERR_INVALID_PROTOCOL)))
+      (ok (map-set supported-protocols protocol-address (merge protocol {active: active}))))))
+
+;; Add or update farming pool
+(define-public (add-farming-pool 
+                (protocol-address principal) 
+                (pool-id uint)
+                (input-token principal)
+                (reward-token principal)
+                (max-capacity uint)
+                (compounded bool)
+                (impermanent-loss-factor uint)
+                (pool-address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (not (is-none (map-get? supported-protocols protocol-address))) ERR_INVALID_PROTOCOL)
+    
+    (ok (map-set farming-pools {protocol: protocol-address, pool-id: pool-id} {
+      input-token: input-token,
+      reward-token: reward-token,
+      total-staked: u0,
+      current-apr: u0,
+      max-capacity: max-capacity,
+      active: true,
+      compounded: compounded,
+      last-harvest-block: u0,
+      last-rebalance-block: u0,
+      historical-apr: (list),
+      impermanent-loss-factor: impermanent-loss-factor,
+      address: pool-address
+    }))))
+
+;; Update token price
+(define-public (update-token-price (token principal) (price-in-ustx uint) (source (string-ascii 32)))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    
+    (ok (map-set token-prices token {
+      price-in-ustx: price-in-ustx,
+      last-updated: stacks-block-height,
+      source: source
+    }))))
+
+;; Set minimum deposit for a token
+(define-public (set-minimum-deposit (token principal) (min-amount uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (map-set minimum-deposits token min-amount))))
+
+
+(define-read-only (get-subscription-fee (tier (string-ascii 16)))
+  (if (is-eq tier "basic") u1000000
+    (if (is-eq tier "premium") u5000000
+      (if (is-eq tier "platinum") u10000000 u0))))
+
+(define-read-only (get-subscription-benefits (tier (string-ascii 16)))
+  (if (is-eq tier "basic") 
+    {reduced-fees: u100, max-strategies: u5, priority-rebalance: false, custom-strategies: false}
+    (if (is-eq tier "premium")
+      {reduced-fees: u300, max-strategies: u15, priority-rebalance: true, custom-strategies: false}
+      {reduced-fees: u500, max-strategies: u50, priority-rebalance: true, custom-strategies: true})))
+
+
+(define-map multisig-transactions uint {
+  initiator: principal,
+  target-contract: principal,
+  function-name: (string-ascii 32),
+  parameters: (buff 512),
+  confirmations: (list 10 principal),
+  required-confirmations: uint,
+  executed: bool,
+  expiry-block: uint
+})
+
+;; ==== NEW FEATURE: Additional Error Constants ====
+(define-constant ERR_WHITELIST_REQUIRED (err u1019))
+(define-constant ERR_COOLDOWN_ACTIVE (err u1020))
+(define-constant ERR_INVALID_SIGNATURE (err u1021))
+(define-constant ERR_DUPLICATE_ENTRY (err u1022))
+(define-constant ERR_REWARD_EXPIRED (err u1023))
+(define-constant ERR_VAULT_LOCKED (err u1024))
+
+(define-map vip-whitelist principal {
+  tier: uint, ;; 1=bronze, 2=silver, 3=gold, 4=platinum
+  added-by: principal,
+  added-at-block: uint,
+  fee-reduction: uint, ;; Basis points reduction
+  priority-access: bool,
+  custom-limits: bool
+})
+
+(define-data-var whitelist-enabled bool false)
+
+;; ==== Time-Locked Vault System ====
+(define-map time-locked-vaults {user: principal, vault-id: uint} {
+  token: principal,
+  amount: uint,
+  lock-duration: uint, ;; Blocks to lock
+  unlock-block: uint,
+  bonus-multiplier: uint, ;; Bonus APY multiplier in basis points
+  claimed: bool,
+  auto-renew: bool
+})
+
+
+(define-data-var next-vault-id uint u1)
+(define-map user-vault-count principal uint)
+
+;; ==== Dynamic Reward Booster System ====
+(define-map reward-boosters principal {
+  base-multiplier: uint, ;; Base reward multiplier
+  streak-bonus: uint, ;; Bonus for consecutive days
+  volume-bonus: uint, ;; Bonus based on volume
+  loyalty-bonus: uint, ;; Bonus for long-term holding
+  current-streak: uint,
+  last-activity-block: uint,
+  total-volume: uint
+})
+
+;; ==== Strategy Performance Competition ====
+(define-map strategy-competitions uint {
+  name: (string-ascii 64),
+  start-block: uint,
+  end-block: uint,
+  prize-pool: uint,
+  entry-fee: uint,
+  min-participants: uint,
+  max-participants: uint,
+  winner-strategy: uint,
+  active: bool,
+  participants: uint
+})
+
+(define-data-var next-competition-id uint u1)
+(define-map competition-participants {competition-id: uint, user: principal} uint) ;; strategy-id
+
+;; ==== Emergency Circuit Breaker ====
+(define-map circuit-breakers principal {
+  token: principal,
+  max-withdraw-per-block: uint,
+  current-block-withdrawals: uint,
+  last-reset-block: uint,
+  breaker-active: bool,
+  trigger-threshold: uint ;; Percentage of TVL
+})
+
+(define-map farming-certificates uint {
+  owner: principal,
+  strategy-id: uint,
+  deposit-amount: uint,
+  issue-block: uint,
+  tier: (string-ascii 16), ;; "bronze", "silver", "gold", "diamond"
+  transferable: bool,
+  boost-power: uint ;; Basis points boost to yields
+})
+
+(define-data-var next-certificate-id uint u1)
+
+(define-map social-profiles principal {
+  display-name: (string-ascii 32),
+  total-followers: uint,
+  total-following: uint,
+  public-strategies: uint,
+  reputation-score: uint,
+  verified: bool
+})
+
+(define-map social-follows {follower: principal, following: principal} bool)
+(define-map strategy-copies {copier: principal, original-strategy: uint} uint) ;; copied strategy id
+
+;; ==== NEW FEATURE: Risk Assessment Oracle ====
+(define-map risk-assessments principal {
+  overall-risk: uint, ;; 1-100
+  smart-contract-risk: uint,
+  liquidity-risk: uint,
+  market-risk: uint,
+  last-assessment: uint,
+  assessor: principal,
+  confidence-score: uint
+})
+
+;; ==== NEW FEATURE: Automated Portfolio Rebalancing ====
+(define-map auto-rebalance-configs principal {
+  enabled: bool,
+  target-allocations: (list 5 {strategy-id: uint, percentage: uint}),
+  rebalance-threshold: uint, ;; Percentage deviation to trigger
+  max-rebalance-frequency: uint, ;; Minimum blocks between rebalances
+  last-rebalance-block: uint,
+  rebalance-cost: uint
+})
+
+;; ==== NEW FEATURE: Milestone Achievement System ====
+(define-map user-milestones principal {
+  first-deposit: bool,
+  deposit-10k: bool,
+  deposit-100k: bool,
+  deposit-1m: bool,
+  hold-30-days: bool,
+  hold-1-year: bool,
+  refer-5-users: bool,
+  total-milestones: uint,
+  last-milestone-block: uint
+})
+
+;; ==== NEW FEATURE: Liquidity Mining Epochs ====
+(define-map mining-epochs uint {
+  start-block: uint,
+  end-block: uint,
+  total-rewards: uint,
+  reward-token: principal,
+  participating-strategies: (list 10 uint),
+  rewards-per-block: uint,
+  total-participants: uint,
+  distributed-rewards: uint
+})
