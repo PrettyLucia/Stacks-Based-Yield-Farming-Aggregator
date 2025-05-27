@@ -34,4 +34,27 @@
 (define-data-var staking-allocation uint u5000) ;; 50% to stakers
 (define-data-var insurance-allocation uint u2000) ;; 20% to insurance fund
 
+;; Minimum deposit amounts
+(define-map minimum-deposits principal uint)
+
+;; Treasury and insurance fund addresses
+(define-data-var treasury-address principal CONTRACT_OWNER)
+(define-data-var insurance-fund-address principal CONTRACT_OWNER)
+
+;; Protocol settings
+(define-data-var auto-compound-interval uint u24) ;; Hours between auto-compounds
+(define-data-var minimum-rebalance-interval uint u168) ;; 7 days (168 hours) between rebalances
+(define-data-var maximum-slippage uint u30) ;; 0.3% maximum slippage
+
+;; Supported protocols data
+(define-map supported-protocols principal {
+  name: (string-ascii 64),
+  active: bool,
+  tvl-cap: uint, ;; Maximum TVL allowed in this protocol
+  risk-score: uint, ;; Risk score from 1-100 (1 is safest)
+  audited: bool,
+  last-harvest-block: uint,
+  last-apr: uint, ;; Last recorded APR in basis points
+  protocol-type: (string-ascii 32) ;; lending, AMM, staking, etc.
+})
 
