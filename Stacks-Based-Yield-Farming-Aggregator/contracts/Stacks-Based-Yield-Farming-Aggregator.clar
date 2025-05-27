@@ -515,3 +515,14 @@
         active: true,
         participants: u0
       })))))
+
+(define-public (join-competition (competition-id uint) (strategy-id uint))
+  (let ((competition (unwrap! (map-get? strategy-competitions competition-id) ERR_INVALID_AMOUNT)))
+    (asserts! (get active competition) ERR_INVALID_AMOUNT)
+    (asserts! (< (get participants competition) (get max-participants competition)) ERR_MAXIMUM_CAPACITY)
+    (asserts! (< stacks-block-height (get end-block competition)) ERR_INVALID_AMOUNT)
+    
+    ;; Entry fee payment would be handled here
+    (map-set competition-participants {competition-id: competition-id, user: tx-sender} strategy-id)
+    (ok (map-set strategy-competitions competition-id 
+      (merge competition {participants: (+ (get participants competition) u1)})))))
