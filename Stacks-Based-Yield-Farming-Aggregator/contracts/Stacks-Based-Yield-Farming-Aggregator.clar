@@ -263,3 +263,22 @@
       impermanent-loss-factor: impermanent-loss-factor,
       address: pool-address
     }))))
+
+;; Update token price
+(define-public (update-token-price (token principal) (price-in-ustx uint) (source (string-ascii 32)))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    
+    (ok (map-set token-prices token {
+      price-in-ustx: price-in-ustx,
+      last-updated: stacks-block-height,
+      source: source
+    }))))
+
+;; Set minimum deposit for a token
+(define-public (set-minimum-deposit (token principal) (min-amount uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (map-set minimum-deposits token min-amount))))
+
+
