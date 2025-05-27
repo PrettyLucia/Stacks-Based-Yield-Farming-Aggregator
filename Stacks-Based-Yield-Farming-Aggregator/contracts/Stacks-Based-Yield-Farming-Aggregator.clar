@@ -74,3 +74,30 @@
   source: (string-ascii 32)
 })
 
+;; Farming pool data
+(define-map farming-pools {protocol: principal, pool-id: uint} {
+  input-token: principal, ;; Token to deposit
+  reward-token: principal, ;; Token received as reward
+  total-staked: uint, ;; Total tokens staked in this pool
+  current-apr: uint, ;; Current APR in basis points
+  max-capacity: uint, ;; Max capacity of this pool
+  active: bool,
+  compounded: bool, ;; Whether rewards auto-compound
+  last-harvest-block: uint,
+  last-rebalance-block: uint,
+  historical-apr: (list 30 uint), ;; Last 30 days APR in basis points
+  impermanent-loss-factor: uint, ;; IL factor if applicable (0 for single-asset)
+  address: principal ;; Contract address
+})
+
+;; User positions
+(define-map user-positions {user: principal, strategy-id: uint} {
+  principal-amount: uint, ;; Original deposit amount
+  share-amount: uint, ;; Shares in the strategy
+  entry-price: uint, ;; Entry price for perf calculation
+  deposit-block: uint, ;; Block when deposited
+  last-harvest-block: uint, ;; Last block when user harvested
+  claimed-rewards: uint, ;; Total rewards claimed
+  unclaimed-rewards: uint ;; Pending rewards
+})
+
