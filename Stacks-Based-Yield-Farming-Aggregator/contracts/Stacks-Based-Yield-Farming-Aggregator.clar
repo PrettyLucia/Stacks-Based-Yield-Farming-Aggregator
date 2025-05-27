@@ -228,3 +228,38 @@
       protocol-type: protocol-type
     }))))
 
+;; Update protocol status
+(define-public (update-protocol-status (protocol-address principal) (active bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (let ((protocol (unwrap! (map-get? supported-protocols protocol-address) ERR_INVALID_PROTOCOL)))
+      (ok (map-set supported-protocols protocol-address (merge protocol {active: active}))))))
+
+;; Add or update farming pool
+(define-public (add-farming-pool 
+                (protocol-address principal) 
+                (pool-id uint)
+                (input-token principal)
+                (reward-token principal)
+                (max-capacity uint)
+                (compounded bool)
+                (impermanent-loss-factor uint)
+                (pool-address principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (not (is-none (map-get? supported-protocols protocol-address))) ERR_INVALID_PROTOCOL)
+    
+    (ok (map-set farming-pools {protocol: protocol-address, pool-id: pool-id} {
+      input-token: input-token,
+      reward-token: reward-token,
+      total-staked: u0,
+      current-apr: u0,
+      max-capacity: max-capacity,
+      active: true,
+      compounded: compounded,
+      last-harvest-block: u0,
+      last-rebalance-block: u0,
+      historical-apr: (list),
+      impermanent-loss-factor: impermanent-loss-factor,
+      address: pool-address
+    }))))
