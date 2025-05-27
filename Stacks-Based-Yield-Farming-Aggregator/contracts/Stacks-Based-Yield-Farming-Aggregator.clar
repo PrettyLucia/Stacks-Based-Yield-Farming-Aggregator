@@ -483,3 +483,35 @@
   (begin
     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
     (ok (var-set whitelist-enabled enabled))))
+
+(define-public (claim-vault-rewards (vault-id uint))
+  (let ((vault (unwrap! (map-get? time-locked-vaults {user: tx-sender, vault-id: vault-id}) ERR_INVALID_AMOUNT)))
+    (asserts! (>= stacks-block-height (get unlock-block vault)) ERR_VAULT_LOCKED)
+    (asserts! (not (get claimed vault)) ERR_DUPLICATE_ENTRY)
+    
+    ;; Calculate rewards based on bonus multiplier
+    (let ((rewards (/ (* (get amount vault) (get bonus-multiplier vault)) u10000)))
+      (ok (map-set time-locked-vaults {user: tx-sender, vault-id: vault-id} 
+        (merge vault {claimed: true}))))))
+(define-public (create-strategy-competition 
+                (name (string-ascii 64))
+                (duration-blocks uint)
+                (prize-pool uint)
+                (entry-fee uint)
+                (max-participants uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (let ((competition-id (var-get next-competition-id)))
+      (var-set next-competition-id (+ competition-id u1))
+      (ok (map-set strategy-competitions competition-id {
+        name: name,
+        start-block: stacks-block-height,
+        end-block: (+ stacks-block-height duration-blocks),
+        prize-pool: prize-pool,
+        entry-fee: entry-fee,
+        min-participants: u5,
+        max-participants: max-participants,
+        winner-strategy: u0,
+        active: true,
+        participants: u0
+      })))))
