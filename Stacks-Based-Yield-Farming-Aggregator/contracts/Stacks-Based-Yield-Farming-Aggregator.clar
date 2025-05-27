@@ -447,3 +447,39 @@
   total-participants: uint,
   distributed-rewards: uint
 })
+
+
+(define-data-var current-epoch uint u1)
+
+;; === Protocol Management Functions ===
+
+(define-public (add-to-whitelist 
+                (user principal) 
+                (tier uint) 
+                (fee-reduction uint)
+                (priority-access bool)
+                (custom-limits bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (<= tier u4) ERR_INVALID_AMOUNT)
+    (asserts! (<= fee-reduction u5000) ERR_INVALID_AMOUNT) ;; Max 50% reduction
+    
+    (ok (map-set vip-whitelist user {
+      tier: tier,
+      added-by: tx-sender,
+      added-at-block: stacks-block-height,
+      fee-reduction: fee-reduction,
+      priority-access: priority-access,
+      custom-limits: custom-limits
+    }))))
+
+
+(define-public (remove-from-whitelist (user principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (map-delete vip-whitelist user))))
+
+(define-public (toggle-whitelist-requirement (enabled bool))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (var-set whitelist-enabled enabled))))
