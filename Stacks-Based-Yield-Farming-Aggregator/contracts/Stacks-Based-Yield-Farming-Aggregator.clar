@@ -58,3 +58,19 @@
   protocol-type: (string-ascii 32) ;; lending, AMM, staking, etc.
 })
 
+;; Token risk assessments
+(define-map token-risk-scores principal {
+  volatility-score: uint, ;; 1-100 (1 is lowest volatility)
+  liquidity-score: uint, ;; 1-100 (1 is highest liquidity)
+  market-cap-score: uint, ;; 1-100 (1 is highest market cap)
+  composite-score: uint, ;; Weighted average of above
+  risk-level: (string-ascii 16) ;; "low", "medium", "high"
+})
+
+;; Token pricing data
+(define-map token-prices principal {
+  price-in-ustx: uint,
+  last-updated: uint,
+  source: (string-ascii 32)
+})
+
