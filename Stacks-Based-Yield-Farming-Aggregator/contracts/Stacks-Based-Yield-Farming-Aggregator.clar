@@ -282,3 +282,15 @@
     (ok (map-set minimum-deposits token min-amount))))
 
 
+(define-read-only (get-subscription-fee (tier (string-ascii 16)))
+  (if (is-eq tier "basic") u1000000
+    (if (is-eq tier "premium") u5000000
+      (if (is-eq tier "platinum") u10000000 u0))))
+
+(define-read-only (get-subscription-benefits (tier (string-ascii 16)))
+  (if (is-eq tier "basic") 
+    {reduced-fees: u100, max-strategies: u5, priority-rebalance: false, custom-strategies: false}
+    (if (is-eq tier "premium")
+      {reduced-fees: u300, max-strategies: u15, priority-rebalance: true, custom-strategies: false}
+      {reduced-fees: u500, max-strategies: u50, priority-rebalance: true, custom-strategies: true})))
+
