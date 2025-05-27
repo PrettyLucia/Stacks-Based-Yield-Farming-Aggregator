@@ -556,3 +556,14 @@
       
       (asserts! (<= new-withdrawals (get max-withdraw-per-block updated-breaker)) ERR_INVALID_AMOUNT)
       (ok (map-set circuit-breakers token (merge updated-breaker {current-block-withdrawals: new-withdrawals}))))))
+
+(define-public (create-social-profile (display-name (string-ascii 32)))
+  (begin
+    (ok (map-set social-profiles tx-sender {
+      display-name: display-name,
+      total-followers: u0,
+      total-following: u0,
+      public-strategies: u0,
+      reputation-score: u100,
+      verified: false
+    }))))
