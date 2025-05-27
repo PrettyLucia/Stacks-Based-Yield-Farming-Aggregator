@@ -526,3 +526,33 @@
     (map-set competition-participants {competition-id: competition-id, user: tx-sender} strategy-id)
     (ok (map-set strategy-competitions competition-id 
       (merge competition {participants: (+ (get participants competition) u1)})))))
+
+(define-public (set-circuit-breaker 
+                (token principal) 
+                (max-withdraw-per-block uint) 
+                (trigger-threshold uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (ok (map-set circuit-breakers token {
+      token: token,
+      max-withdraw-per-block: max-withdraw-per-block,
+      current-block-withdrawals: u0,
+      last-reset-block: stacks-block-height,
+      breaker-active: false,
+      trigger-threshold: trigger-threshold
+    }))))
+
+(define-public (check-withdrawal-limits (token principal) (amount uint))
+  (let ((breaker (default-to 
+          {token: token, max-withdraw-per-block: u1000000000, current-block-withdrawals: u0,
+           last-reset-block: u0, breaker-active: false, trigger-threshold: u2000}
+          (map-get? circuit-breakers token))))
+    
+    ;; Reset counter if new block
+    (let ((updated-breaker (if (> stacks-block-height (get last-reset-block breaker))
+                             (merge breaker {current-block-withdrawals: u0, last-reset-block: stacks-block-height})
+                             breaker))
+          (new-withdrawals (+ (get current-block-withdrawals updated-breaker) amount)))
+      
+      (asserts! (<= new-withdrawals (get max-withdraw-per-block updated-breaker)) ERR_INVALID_AMOUNT)
+      (ok (map-set circuit-breakers token (merge updated-breaker {current-block-withdrawals: new-withdrawals}))))))
