@@ -101,3 +101,30 @@
   unclaimed-rewards: uint ;; Pending rewards
 })
 
+;; User totals across all strategies
+(define-map user-totals principal {
+  total-value-locked: uint,
+  total-earnings: uint,
+  strategies-count: uint,
+  compound-preference: bool ;; Whether user prefers auto-compounding
+})
+
+;; Strategy definitions
+(define-map strategies uint {
+  name: (string-ascii 64),
+  description: (string-ascii 256),
+  input-token: principal,
+  active: bool,
+  risk-level: (string-ascii 16), ;; "low", "medium", "high"
+  allocation-map: (list 10 {protocol: principal, pool-id: uint, allocation: uint}), ;; Protocol and allocation in percentage
+  total-allocation: uint, ;; Must sum to 10000 (100%)
+  total-apy: uint, ;; Combined APY in basis points
+  total-staked: uint, ;; Total amount staked in this strategy
+  share-price: uint, ;; Current price per share
+  share-token: principal, ;; Token representing shares
+  auto-compound: bool, ;; Whether strategy auto-compounds
+  last-rebalance-block: uint,
+  creation-block: uint,
+  performance-history: (list 30 {block: uint, apy: uint}) ;; Historical performance
+})
+
