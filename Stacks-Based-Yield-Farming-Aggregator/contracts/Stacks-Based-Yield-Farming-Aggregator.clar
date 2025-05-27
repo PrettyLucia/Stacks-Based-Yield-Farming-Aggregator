@@ -128,3 +128,35 @@
   performance-history: (list 30 {block: uint, apy: uint}) ;; Historical performance
 })
 
+;; Strategy counter
+(define-data-var next-strategy-id uint u1)
+
+;; Harvested rewards tracking
+(define-map harvested-rewards {protocol: principal, pool-id: uint} {
+  last-amount: uint,
+  total-amount: uint,
+  last-harvest-block: uint
+})
+
+;; Protocol revenue tracking
+(define-map protocol-revenue {
+  token: principal
+} {
+  performance-fees: uint,
+  withdrawal-fees: uint,
+  total-fees: uint
+})
+
+;; Historical APY data for each protocol
+(define-map protocol-apy-history {protocol: principal, day: uint} uint)
+
+;; User activity log
+(define-map user-activity {user: principal, activity-id: uint} {
+  activity-type: (string-ascii 16), ;; "deposit", "withdraw", "harvest", "claim"
+  strategy-id: uint,
+  amount: uint,
+  block-height: uint,
+  success: bool
+})
+
+
